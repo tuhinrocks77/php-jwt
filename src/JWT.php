@@ -97,6 +97,11 @@ class JWT
         if (!in_array($header->alg, $allowed_algs)) {
             throw new UnexpectedValueException('Algorithm not allowed');
         }
+        if ($header->alg === 'ES256') {
+            // OpenSSL expects an ASN.1 DER sequence for ES256 signatures
+            $sig = ECPublicKey::encodeSignature($sig);
+        }
+
         if (is_array($key) || $key instanceof \ArrayAccess) {
             if (isset($header->kid)) {
                 if (!isset($key[$header->kid])) {
