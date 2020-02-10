@@ -21,6 +21,8 @@ use \DateTime;
  */
 class JWT
 {
+    const ASN1_INTEGER = 0x02;
+    const ASN1_SEQUENCE = 0x10;
 
     /**
      * When checking nbf, iat or expiration times,
@@ -99,7 +101,7 @@ class JWT
         }
         if ($header->alg === 'ES256') {
             // OpenSSL expects an ASN.1 DER sequence for ES256 signatures
-            $sig = ECPublicKey::encodeSignature($sig);
+            $sig = self::encodeSignature($sig);
         }
 
         if (is_array($key) || $key instanceof \ArrayAccess) {
@@ -381,5 +383,59 @@ class JWT
             return mb_strlen($str, '8bit');
         }
         return strlen($str);
+    }
+
+    /**
+     * Convert an ECDSA signature to an ASN.1 DER sequence
+     *
+     * @param   string $sig The ECDSA signature to convert
+     * @return  string The encoded DER object
+     */
+    private static function encodeSignature($sig)
+    {
+        // Separate the signature into r-value and s-value
+        list($r, $s) = str_split($sig, (int) (strlen($sig) / 2));
+
+        // Trim leading zeros
+        $r = ltrim($r, "\x00");
+        $s = ltrim($s, "\x00");
+
+        // Convert r-value and s-value from unsigned big-endian integers to
+        // signed two's complement
+        if (ord($r[0]) > 0x7f) {
+            $r = "\x00" . $r;
+        }
+        if (ord($s[0]) > 0x7f) {
+            $s = "\x00" . $s;
+        }
+
+        return self::encodeDER(
+            self::ASN1_SEQUENCE,
+            self::encodeDER(self::ASN1_INTEGER, $r) .
+            self::encodeDER(self::ASN1_INTEGER, $s)
+        );
+    }
+
+    /**
+     * Encodes a value into a DER object.
+     *
+     * @param   int     $type DER tag
+     * @param   string  $value the value to encode
+     * @return  string  the encoded object
+     */
+    private static function encodeDER($type, $value)
+    {
+        $tag_header = 0;
+        if ($type === self::ASN1_SEQUENCE) {
+            $tag_header |= 0x20;
+        }
+
+        // Type
+        $der = chr($tag_header | $type);
+
+        // Length
+        $der .= chr(strlen($value));
+
+        return $der . $value;
     }
 }
