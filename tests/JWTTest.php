@@ -293,7 +293,7 @@ class JWTTest extends PHPUnit_Framework_TestCase
         }
         JWT::$leeway = 100000000; // three years
         $keys = json_decode(file_get_contents(__DIR__ . '/publickeys.json'), true);
-        $decoded = JWT::decode($ecdsaToken, $keys, ['ES256']);
+        $decoded = JWT::decode($ecdsaToken, $keys, array('ES256'));
         $this->assertTrue((bool) $decoded);
         $this->assertEquals($decoded->hd, 'google.com');
         JWT::$leeway = 0;
