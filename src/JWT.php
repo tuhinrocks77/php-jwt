@@ -1,6 +1,7 @@
 <?php
 
 namespace Firebase\JWT;
+
 use \DomainException;
 use \InvalidArgumentException;
 use \UnexpectedValueException;
@@ -23,6 +24,7 @@ class JWT
 {
     const ASN1_INTEGER = 0x02;
     const ASN1_SEQUENCE = 0x10;
+    const ASN1_BIT_STRING = 0x03;
 
     /**
      * When checking nbf, iat or expiration times,
@@ -167,7 +169,7 @@ class JWT
         if ($keyId !== null) {
             $header['kid'] = $keyId;
         }
-        if ( isset($head) && is_array($head) ) {
+        if (isset($head) && is_array($head)) {
             $header = array_merge($head, $header);
         }
         $segments = array();
@@ -199,7 +201,7 @@ class JWT
             throw new DomainException('Algorithm not supported');
         }
         list($function, $algorithm) = static::$supported_algs[$alg];
-        switch($function) {
+        switch ($function) {
             case 'hash_hmac':
                 return hash_hmac($algorithm, $msg, $key, true);
             case 'openssl':
@@ -208,6 +210,9 @@ class JWT
                 if (!$success) {
                     throw new DomainException("OpenSSL unable to sign data");
                 } else {
+                    if ($alg === 'ES256') {
+                        $signature = self::signatureFromDER($signature, 256);
+                    }
                     return $signature;
                 }
         }
@@ -233,7 +238,7 @@ class JWT
         }
 
         list($function, $algorithm) = static::$supported_algs[$alg];
-        switch($function) {
+        switch ($function) {
             case 'openssl':
                 $success = openssl_verify($msg, $signature, $key, $algorithm);
                 if ($success === 1) {
@@ -437,5 +442,73 @@ class JWT
         $der .= chr(strlen($value));
 
         return $der . $value;
+    }
+
+    /**
+     * Encodes signature from a DER object.
+     *
+     * @param   string  $der binary signature in DER format
+     * @param   int     $keySize the nubmer of bits in the key
+     * @return  string  the signature
+     */
+    private static function signatureFromDER($der, $keySize)
+    {
+        // OpenSSL returns the ECDSA signatures as a binary ASN.1 DER SEQUENCE
+        list($offset, $_) = self::readDER($der);
+        list($offset, $r) = self::readDER($der, $offset);
+        list($offset, $s) = self::readDER($der, $offset);
+
+        // Convert r-value and s-value from signed two's compliment to unsigned
+        // big-endian integers
+        $r = ltrim($r, "\x00");
+        $s = ltrim($s, "\x00");
+
+        // Pad out r and s so that they are $keySize bits long
+        $r = str_pad($r, $keySize / 8, "\x00", STR_PAD_LEFT);
+        $s = str_pad($s, $keySize / 8, "\x00", STR_PAD_LEFT);
+
+        return $r . $s;
+    }
+
+    /**
+     * Reads binary DER-encoded data and decodes into a single object
+     *
+     * @param string $der the binary data in DER format
+     * @param int &$offset the offset of the data stream containing the object
+     * to decode
+     * @return array [$offset, $data] the new offset and the decoded object
+     */
+    private static function readDER($der, $offset = 0)
+    {
+        $pos = $offset;
+        $size = strlen($der);
+        $constructed = (ord($der[$pos]) >> 5) & 0x01;
+        $type = ord($der[$pos++]) & 0x1f;
+
+        // Length
+        $len = ord($der[$pos++]);
+        if ($len & 0x80) {
+            $n = $len & 0x1f;
+            $len = 0;
+            while ($n-- && $pos < $size) {
+                $len = ($len << 8) | ord($der[$pos++]);
+            }
+        }
+
+        // Value
+        if ($type == self::ASN1_BIT_STRING) {
+            $pos++; // Skip the first contents octet (padding indicator)
+            $data = substr($der, $pos, $len - 1);
+            if (!$ignore_bit_strings) {
+                $pos += $len - 1;
+            }
+        } elseif (!$constructed) {
+            $data = substr($der, $pos, $len);
+            $pos += $len;
+        } else {
+            $data = null;
+        }
+
+        return [$pos, $data];
     }
 }

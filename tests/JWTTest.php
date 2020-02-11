@@ -286,15 +286,17 @@ class JWTTest extends PHPUnit_Framework_TestCase
     /**
      * @runInSeparateProcess
      */
-    public function testValidEcdsaToken()
+    public function testEncodeAndDecodeEcdsaToken()
     {
-        JWT::$leeway = 100000000; // three years
-        $ecdsaToken = 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJpYXQiOjE1ODE0NjE5NDd9.MynE0T4D1gKVZGgQOTLuxuCmbW5w3NA6jCZEh6MEvlhtlGQDKSnbzGqNE3iqI7Ir7uODvDIuaxrgJnF62OQvmw';
-        $key = file_get_contents(__DIR__ . '/ecdsa-public.pem');
-        $decoded = JWT::decode($ecdsaToken, $key, array('ES256'));
-        $this->assertTrue((bool) $decoded);
-        $this->assertEquals($decoded->foo, 'bar');
-        JWT::$leeway = 0;
+        $privateKey = file_get_contents(__DIR__ . '/ecdsa-private.pem');
+        $payload = ['foo' => 'bar'];
+        $encoded = JWT::encode($payload, $privateKey, 'ES256');
+
+        // Verify decoding succeeds
+        $publicKey = file_get_contents(__DIR__ . '/ecdsa-public.pem');
+        $decoded = JWT::decode($encoded, $publicKey, array('ES256'));
+
+        $this->assertEquals('bar', $decoded->foo);
     }
 }
 
