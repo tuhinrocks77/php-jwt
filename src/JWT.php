@@ -101,7 +101,7 @@ class JWT
         }
         if ($header->alg === 'ES256') {
             // OpenSSL expects an ASN.1 DER sequence for ES256 signatures
-            $sig = self::encodeSignature($sig);
+            $sig = self::signatureToDer($sig);
         }
 
         if (is_array($key) || $key instanceof \ArrayAccess) {
@@ -391,7 +391,7 @@ class JWT
      * @param   string $sig The ECDSA signature to convert
      * @return  string The encoded DER object
      */
-    private static function encodeSignature($sig)
+    private static function signatureToDer($sig)
     {
         // Separate the signature into r-value and s-value
         list($r, $s) = str_split($sig, (int) (strlen($sig) / 2));
