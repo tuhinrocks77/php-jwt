@@ -288,14 +288,12 @@ class JWTTest extends PHPUnit_Framework_TestCase
      */
     public function testValidEcdsaToken()
     {
-        if (false === $ecdsaToken = getenv('ECDSA_JWT')) {
-            $this->markTestSkipped('Set the ECDSA_JWT environment variable');
-        }
         JWT::$leeway = 100000000; // three years
-        $keys = json_decode(file_get_contents(__DIR__ . '/publickeys.json'), true);
-        $decoded = JWT::decode($ecdsaToken, $keys, array('ES256'));
+        $ecdsaToken = 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJpYXQiOjE1ODE0NjE5NDd9.MynE0T4D1gKVZGgQOTLuxuCmbW5w3NA6jCZEh6MEvlhtlGQDKSnbzGqNE3iqI7Ir7uODvDIuaxrgJnF62OQvmw';
+        $key = file_get_contents(__DIR__ . '/ecdsa-public.pem');
+        $decoded = JWT::decode($ecdsaToken, $key, array('ES256'));
         $this->assertTrue((bool) $decoded);
-        $this->assertEquals($decoded->hd, 'google.com');
+        $this->assertEquals($decoded->foo, 'bar');
         JWT::$leeway = 0;
     }
 }
