@@ -289,7 +289,7 @@ class JWTTest extends PHPUnit_Framework_TestCase
     public function testEncodeAndDecodeEcdsaToken()
     {
         $privateKey = file_get_contents(__DIR__ . '/ecdsa-private.pem');
-        $payload = ['foo' => 'bar'];
+        $payload = array('foo' => 'bar');
         $encoded = JWT::encode($payload, $privateKey, 'ES256');
 
         // Verify decoding succeeds
