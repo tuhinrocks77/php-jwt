@@ -509,6 +509,6 @@ class JWT
             $data = null;
         }
 
-        return [$pos, $data];
+        return array($pos, $data);
     }
 }
