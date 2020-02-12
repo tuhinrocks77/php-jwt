@@ -474,7 +474,7 @@ class JWT
      * Reads binary DER-encoded data and decodes into a single object
      *
      * @param string $der the binary data in DER format
-     * @param int &$offset the offset of the data stream containing the object
+     * @param int $offset the offset of the data stream containing the object
      * to decode
      * @return array [$offset, $data] the new offset and the decoded object
      */
